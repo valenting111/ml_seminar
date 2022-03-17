@@ -77,12 +77,16 @@ approx_x_1_observation = np.matmul(np.linalg.inv(approx_H), z_1-approx_b)
 
 # Projected measurement in z
 proj_z = np.matmul(approx_H, mu_1) + approx_b
+true_proj_z = np.array(
+    [np.sqrt(mu_1[0]**2+mu_1[1]**2), np.arctan(mu_1[1]/mu_1[0])])
 
 # Best estimate with Kalman gain
 K = np.matmul(np.matmul(cov_1, approx_H.T), np.linalg.inv(
     np.matmul(np.matmul(approx_H, cov_1), approx_H.T) + cov_r))
 # print("K:",K)
-best_x = mu_1 + np.matmul(K, (z_1 - proj_z))
+correction_radar_EKF = np.matmul(K, (z_1 - proj_z))
+
+best_x = mu_1 + correction_radar_EKF
 best_cov = np.matmul(np.eye(2) - np.matmul(K, approx_H), cov_1)
 best_rv1 = multivariate_normal(best_x, best_cov)
 best_Z1 = best_rv1.pdf(pos)
@@ -141,6 +145,11 @@ cov_z = cov_r.copy()
 for idx, z_i in enumerate(transformed_z):
     cov_z += weights_ukf[idx]*(np.outer(z_i - mean_z, (z_i - mean_z)))
 
+print("mean z: ", mean_z)
+
+rv_cov_z_UKF = multivariate_normal(mean_z, cov_z)
+Z_UKF = rv_cov_z_UKF.pdf(pos)
+
 cov_x_z = np.array([[0., 0.], [0., 0.]])
 
 
@@ -164,43 +173,112 @@ best_rv_UKF = multivariate_normal(mean_UKF, cov_UKF)
 best_Z_UKF = best_rv_UKF.pdf(pos)
 
 
+plt.plot(mu_0[0], mu_0[1], 'ro', markersize=3)
+plt.contour(X, Y, Z, levels=1)
+plt.plot(radar_offset[0], radar_offset[1], 'ko', markersize=20)
+plt.waitforbuttonpress()
+plt.plot(true_1[0], true_1[1], 'm^', markersize=7)
+plt.waitforbuttonpress()
+plt.arrow(mu_0[0], mu_0[1], velocity[0], velocity[1], head_width=0.1)
+plt.waitforbuttonpress()
+plt.plot(mu_1[0], mu_1[1], 'ro', markersize=3)
+plt.contour(X, Y, Z1, levels=1)
+plt.waitforbuttonpress()
+plt.plot([radar_offset[0], true_1[0]], [
+         radar_offset[1], true_1[1]], 'm', linestyle="--")
+plt.waitforbuttonpress()
+
+plt.plot(x_1_observation[0], x_1_observation[1], 'go', markersize=5)
+plt.waitforbuttonpress()
+
+
+plt.plot(z_1[0], z_1[1], 'go', markersize=5)
+plt.waitforbuttonpress()
+
+plt.plot(true_proj_z[0], true_proj_z[1], 'ro', markersize=5)
+plt.waitforbuttonpress()
+
+plt.plot(proj_z[0], proj_z[1], 'ko', markersize=5)
+plt.waitforbuttonpress()
+plt.plot([proj_z[0], z_1[0]], [
+         proj_z[1], z_1[1]], 'b', linestyle="--")
+
+plt.waitforbuttonpress()
+plt.arrow(mu_1[0], mu_1[1], correction_radar_EKF[0],
+          correction_radar_EKF[1], head_width=0.1)
+plt.waitforbuttonpress()
+
+
+plt.plot(best_x[0], best_x[1], 'r^', markersize=7)
+plt.contour(X, Y, best_Z1, levels=1)
+
+plt.waitforbuttonpress()
+plt.plot(x0[0], x0[1], 'ro', markersize=3)
+plt.plot(x1[0], x1[1], 'ro', markersize=3)
+plt.plot(x2[0], x2[1], 'ro', markersize=3)
+plt.plot(x3[0], x3[1], 'ro', markersize=3)
+plt.plot(x4[0], x4[1], 'ro', markersize=3)
+
+
+plt.waitforbuttonpress()
+plt.plot(transformed_x[0][0], transformed_x[0][1], 'ro', markersize=3)
+plt.plot(transformed_x[1][0], transformed_x[1][1], 'ro', markersize=3)
+plt.plot(transformed_x[2][0], transformed_x[2][1], 'ro', markersize=3)
+plt.plot(transformed_x[3][0], transformed_x[3][1], 'ro', markersize=3)
+plt.plot(transformed_x[4][0], transformed_x[4][1], 'ro', markersize=3)
+plt.waitforbuttonpress()
+
+
+plt.plot(mean_x[0], mean_x[1], 'ro', markersize=3)
+plt.contour(X, Y, UKF_observation_density, levels=1)
+
+plt.waitforbuttonpress()
+plt.plot(transformed_z[0][0], transformed_z[0][1], 'yo', markersize=3)
+plt.plot(transformed_z[1][0], transformed_z[1][1], 'yo', markersize=3)
+plt.plot(transformed_z[2][0], transformed_z[2][1], 'yo', markersize=3)
+plt.plot(transformed_z[3][0], transformed_z[3][1], 'yo', markersize=3)
+plt.plot(transformed_z[4][0], transformed_z[4][1], 'yo', markersize=3)
+
+plt.plot(mean_z[0], mean_z[1], 'bo', markersize=5)
+plt.contour(X, Y, Z_UKF, levels=1)
+plt.waitforbuttonpress()
+plt.plot([mean_z[0], z_1[0]], [
+         mean_z[1], z_1[1]], 'b', linestyle="--")
+
+
+plt.waitforbuttonpress()
+plt.arrow(mean_x[0], mean_x[1], correction_radar[0],
+          correction_radar[1], head_width=0.1)
+
+plt.waitforbuttonpress()
+# plt.plot([mean_UKF[0], correction_radar[0]], [
+#          mean_UKF[1], correction_radar[1]], 'b', linestyle="--")
+plt.plot([mean_UKF[0], mean_x[0]], [
+         mean_UKF[1], mean_x[1]], 'b', linestyle="--")
+
+plt.plot(mean_UKF[0], mean_UKF[1], 'y^', markersize=7)
+plt.contour(X, Y, best_Z_UKF, levels=1)
+plt.show(block=True)
+
+
 # plt.plot(mu_0[0], mu_0[1], 'ro', markersize=3)
 # plt.contour(X, Y, Z, levels=1)
-# plt.plot(1, 0, 'ko', markersize=20)
-# plt.waitforbuttonpress()
-# plt.arrow(mu_0[0], mu_0[1], velocity[0], velocity[1], head_width=0.1)
-# plt.waitforbuttonpress()
+# plt.plot(radar_offset[0], radar_offset[1], 'ko', markersize=20)
+# # plt.waitforbuttonpress()
 # plt.plot(true_1[0], true_1[1], 'm^', markersize=7)
-# plt.waitforbuttonpress()
+# # plt.waitforbuttonpress()
 # plt.plot([radar_offset[0], true_1[0]], [
 #          radar_offset[1], true_1[1]], 'm', linestyle="--")
-# plt.waitforbuttonpress()
-
-
-# plt.plot(mu_1[0], mu_1[1], 'ro', markersize=3)
-# plt.contour(X, Y, Z1, levels=1)
-# plt.waitforbuttonpress()
+# # plt.waitforbuttonpress()
+# plt.arrow(mu_0[0], mu_0[1], velocity[0], velocity[1], head_width=0.1)
+# # plt.waitforbuttonpress()
 
 # plt.plot(z_1[0], z_1[1], 'go', markersize=5)
-# plt.waitforbuttonpress()
-
+# # plt.waitforbuttonpress()
 
 # plt.plot(x_1_observation[0], x_1_observation[1], 'go', markersize=5)
 # plt.waitforbuttonpress()
-# plt.plot(approx_x_1_observation[0],
-#          approx_x_1_observation[1], 'ko', markersize=5)
-# plt.waitforbuttonpress()
 
-
-# plt.plot([approx_x_1_observation[0], best_x[0]], [
-#          approx_x_1_observation[1], best_x[1]], 'b', linestyle="--")
-# plt.plot([mu_1[0], best_x[0]], [mu_1[1], best_x[1]], 'b', linestyle="--")
-
-
-# plt.plot(best_x[0], best_x[1], 'r^', markersize=7)
-# plt.contour(X, Y, best_Z1, levels=1)
-
-# plt.waitforbuttonpress()
 # plt.plot(x0[0], x0[1], 'ro', markersize=3)
 # plt.plot(x1[0], x1[1], 'ro', markersize=3)
 # plt.plot(x2[0], x2[1], 'ro', markersize=3)
@@ -246,68 +324,3 @@ best_Z_UKF = best_rv_UKF.pdf(pos)
 # plt.plot(mean_UKF[0], mean_UKF[1], 'y^', markersize=7)
 # plt.contour(X, Y, best_Z_UKF, levels=1)
 # plt.show(block=True)
-
-
-plt.plot(mu_0[0], mu_0[1], 'ro', markersize=3)
-plt.contour(X, Y, Z, levels=1)
-plt.plot(radar_offset[0], radar_offset[1], 'ko', markersize=20)
-# plt.waitforbuttonpress()
-plt.plot(true_1[0], true_1[1], 'm^', markersize=7)
-# plt.waitforbuttonpress()
-plt.plot([radar_offset[0], true_1[0]], [
-         radar_offset[1], true_1[1]], 'm', linestyle="--")
-# plt.waitforbuttonpress()
-plt.arrow(mu_0[0], mu_0[1], velocity[0], velocity[1], head_width=0.1)
-# plt.waitforbuttonpress()
-
-plt.plot(z_1[0], z_1[1], 'go', markersize=5)
-# plt.waitforbuttonpress()
-
-plt.plot(x_1_observation[0], x_1_observation[1], 'go', markersize=5)
-plt.waitforbuttonpress()
-
-plt.plot(x0[0], x0[1], 'ro', markersize=3)
-plt.plot(x1[0], x1[1], 'ro', markersize=3)
-plt.plot(x2[0], x2[1], 'ro', markersize=3)
-plt.plot(x3[0], x3[1], 'ro', markersize=3)
-plt.plot(x4[0], x4[1], 'ro', markersize=3)
-
-
-plt.waitforbuttonpress()
-plt.plot(transformed_x[0][0], transformed_x[0][1], 'ro', markersize=3)
-plt.plot(transformed_x[1][0], transformed_x[1][1], 'ro', markersize=3)
-plt.plot(transformed_x[2][0], transformed_x[2][1], 'ro', markersize=3)
-plt.plot(transformed_x[3][0], transformed_x[3][1], 'ro', markersize=3)
-plt.plot(transformed_x[4][0], transformed_x[4][1], 'ro', markersize=3)
-plt.waitforbuttonpress()
-
-
-plt.plot(mean_x[0], mean_x[1], 'ro', markersize=3)
-plt.contour(X, Y, UKF_observation_density, levels=1)
-
-plt.waitforbuttonpress()
-plt.plot(transformed_z[0][0], transformed_z[0][1], 'yo', markersize=3)
-plt.plot(transformed_z[1][0], transformed_z[1][1], 'yo', markersize=3)
-plt.plot(transformed_z[2][0], transformed_z[2][1], 'yo', markersize=3)
-plt.plot(transformed_z[3][0], transformed_z[3][1], 'yo', markersize=3)
-plt.plot(transformed_z[4][0], transformed_z[4][1], 'yo', markersize=3)
-
-plt.waitforbuttonpress()
-plt.plot(mean_z[0], mean_z[1], 'bo', markersize=5)
-plt.plot([mean_z[0], z_1[0]], [
-         mean_z[1], z_1[1]], 'b', linestyle="--")
-
-
-plt.waitforbuttonpress()
-plt.arrow(mean_x[0], mean_x[1], correction_radar[0],
-          correction_radar[1], head_width=0.1)
-
-plt.waitforbuttonpress()
-# plt.plot([mean_UKF[0], correction_radar[0]], [
-#          mean_UKF[1], correction_radar[1]], 'b', linestyle="--")
-plt.plot([mean_UKF[0], mean_x[0]], [
-         mean_UKF[1], mean_x[1]], 'b', linestyle="--")
-
-plt.plot(mean_UKF[0], mean_UKF[1], 'y^', markersize=7)
-plt.contour(X, Y, best_Z_UKF, levels=1)
-plt.show(block=True)
